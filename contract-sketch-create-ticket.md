@@ -34,7 +34,7 @@ Serve creare ticket dal supporto.
 | UI | Il supporto compila titolo e descrizione del problema | Nessun campo generato visibile nel form di input |
 | API / azione | Riceve title e description; restituisce id, status e createdAt | Il client non può impostare campi generati dal sistema |
 | Dati | title e description arrivano dall'input; id, status, createdAt sono generati | Allegati, owner avanzato e area sono fuori scope nel primo slice |
-| Verifica | 201 con id non nullo in caso di successo; 400 con messaggio leggibile in caso di errore | Verificabile senza codice: basta leggere la risposta |
+| Verifica | 201 con id non nullo in caso di successo; 400 con campo e messaggio leggibile in caso di errore | Verificabile senza codice: basta leggere la risposta |
 
 ## Action
 
@@ -104,6 +104,30 @@ HTTP 400 Bad Request
 ```json
 {
   "title": "Problema di accesso",
+  "description": ""
+}
+```
+
+Motivo del rifiuto:
+
+```txt
+description è un campo obbligatorio e non può essere vuota.
+Un ticket senza descrizione non permette al supporto di capire il problema.
+Giustificazione: la issue richiede title e description non vuoti come requisito minimo.
+```
+
+Risposta attesa:
+
+```txt
+HTTP 400 Bad Request
+{ "error": "Il campo description è obbligatorio", "field": "description" }
+```
+
+## Payload Invalido 3
+
+```json
+{
+  "title": "Problema di accesso",
   "description": "Non riesco a entrare nel sistema.",
   "status": "resolved"
 }
@@ -131,6 +155,9 @@ HTTP 400 Bad Request
 | --- | --- | --- |
 | Campo richiesto mancante o vuoto | title o description assenti o stringhe vuote | 400 Bad Request con campo e messaggio leggibile |
 | Valore fuori contratto | campo generato (es. status, id, createdAt) inviato come input | 400 Bad Request con indicazione del campo non accettato |
+| Campo sconosciuto o non accettato | chiave non prevista dal contratto (es. priority) | 400 Bad Request con indicazione del campo non riconosciuto |
+
+In caso di più campi invalidi simultaneamente, la risposta riporta solo il primo campo invalido trovato.
 
 ## Non-Goals Confermati
 
