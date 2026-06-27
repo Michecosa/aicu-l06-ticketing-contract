@@ -2,7 +2,7 @@
 
 ## Prima Di Compilare
 
-Un contratto iniziale (contract sketch) e' una descrizione leggera di input, output e risposte attese.
+Un contratto iniziale (contract sketch) è una descrizione leggera di input, output e risposte attese.
 
 Serve a rendere verificabile `create ticket` prima di chiedere codice all'AI.
 
@@ -17,7 +17,7 @@ Non trasformarlo in una specifica API completa, uno schema di un database o un p
 
 Quando compili, ogni esempio deve rispondere (almeno) a tre domande:
 
-- perche' questo input e' valido o invalido?
+- perché questo input è valido o invalido?
 - quale risposta mi aspetto?
 - quale parte della issue o del fuori scope giustifica la scelta?
 
@@ -31,91 +31,114 @@ Serve creare ticket dal supporto.
 
 | Superficie | Cosa riguarda | Nota |
 | --- | --- | --- |
-| UI | [cosa inserisce o vede l'utente] | [nota] |
-| API / azione | [input e output attesi] | [nota] |
-| Dati | [campi conservati o generati] | [nota] |
-| Verifica | [come controlli il comportamento] | [nota] |
+| UI | Il supporto compila titolo e descrizione del problema | Nessun campo generato visibile nel form di input |
+| API / azione | Riceve title e description; restituisce id, status e createdAt | Il client non può impostare campi generati dal sistema |
+| Dati | title e description arrivano dall'input; id, status, createdAt sono generati | Allegati, owner avanzato e area sono fuori scope nel primo slice |
+| Verifica | 201 con id non nullo in caso di successo; 400 con messaggio leggibile in caso di errore | Verificabile senza codice: basta leggere la risposta |
 
 ## Action
 
 Per questo slice, `create ticket` significa:
 
 ```txt
-[scrivi una decisione minima e verificabile]
+Accettare title e description non vuoti forniti dal supporto,
+generare id univoco, status "open" e createdAt,
+restituire il ticket creato con i campi generati.
 ```
 
 ## Payload Valido
 
 ```json
 {
+  "title": "Impossibile accedere all'account",
+  "description": "Dal 26 giugno non riesco a fare login. Il sistema mostra errore 403."
 }
 ```
 
-Perche' e' valido:
+perché è valido:
 
-- [motivo 1]
-- [motivo 2]
+- title è presente e non vuoto: soddisfa il requisito minimo del contratto
+- description è presente e non vuota: soddisfa il requisito minimo del contratto
+- nessun campo generato (id, status, createdAt) viene inviato dal client
 
 ## Risposta Attesa Di Successo
 
 ```txt
-[status o risultato atteso]
+HTTP 201 Created
 ```
 
 Campi attesi:
 
-- [campo generato o restituito]
-- [campo confermato]
+- `id` - generato dal sistema, non nullo
+- `title` - confermato dall'input
+- `description` - confermata dall'input
+- `status` - generato con valore "open"
+- `createdAt` - generato con timestamp di creazione
 
 ## Payload Invalido 1
 
 ```json
 {
+  "title": "",
+  "description": "Dal 26 giugno non riesco a fare login. Il sistema mostra errore 403."
 }
 ```
 
 Motivo del rifiuto:
 
 ```txt
-[perche' e' invalido]
+title è un campo obbligatorio e non può essere vuoto.
+Un ticket senza titolo non è identificabile nè leggibile dal supporto.
+Giustificazione: la issue richiede la creazione del ticket, che senza titolo è incompleta.
 ```
 
 Risposta attesa:
 
 ```txt
-[status o errore atteso]
+HTTP 400 Bad Request
+{ "error": "Il campo title è obbligatorio", "field": "title" }
 ```
 
 ## Payload Invalido 2
 
 ```json
 {
+  "title": "Problema di accesso",
+  "description": "Non riesco a entrare nel sistema.",
+  "status": "resolved"
 }
 ```
 
 Motivo del rifiuto:
 
 ```txt
-[perche' e' invalido]
+status è un campo generato dal sistema, non accettato come input.
+Il client non può impostare lo stato del ticket alla creazione.
+Valore "resolved" è fuori contratto: lo status è sempre "open" alla creazione.
+Giustificazione: accettare status come input violerebbe il controllo del ciclo di vita del ticket.
 ```
 
 Risposta attesa:
 
 ```txt
-[status o errore atteso]
+HTTP 400 Bad Request
+{ "error": "Il campo status non è accettato come input", "field": "status" }
 ```
 
 ## Error Model Minimo
 
 | Caso | Motivo | Risposta attesa |
 | --- | --- | --- |
-| Campo richiesto mancante o vuoto | [motivo] | [errore] |
-| Valore fuori contratto | [motivo] | [errore] |
+| Campo richiesto mancante o vuoto | title o description assenti o stringhe vuote | 400 Bad Request con campo e messaggio leggibile |
+| Valore fuori contratto | campo generato (es. status, id, createdAt) inviato come input | 400 Bad Request con indicazione del campo non accettato |
 
 ## Non-Goals Confermati
 
-- [cosa resta fuori scope]
-- [cosa non chiedere all'AI]
-- [cosa rimandare]
-
-
+- Autenticazione e autorizzazione: rimandato, non nel primo slice
+- Allegati: fuori scope esplicito
+- Notifiche: fuori scope esplicito
+- Owner avanzato: fuori scope esplicito
+- Dashboard: fuori scope esplicito
+- Area/categoria: rimandato, decisione non ancora presa
+- Priority: mancante, nessuna fonte o insieme di valori definito
+- Specifica API completa: non richiesta
